@@ -19,7 +19,57 @@
 4. **类型安全**：所有数据和函数都要有完整的 TypeScript 类型定义
 5. **用户体验**：提供加载状态、操作确认、结果反馈
 
+### API 类型使用规范（🚨 重要）
+6. **严格按照 api/types 定义**: 接口返回值的类型不要重复定义，必须使用 `src/api/types/` 中的类型
+7. **类型引用方式**: 使用 `ApiTypes<typeof api.method>['response']` 获取响应类型
+8. **数组元素类型**: 使用 `ApiTypes<typeof api.method>['response'][number]` 获取数组元素类型
+9. **composable 类型**: 优先使用 composable 中导出的实际类型，如 `GetAcademicSceneListRes`
+10. **禁止自定义**: 不要自己瞎定义接口返回值类型，必须引用已定义的类型
+
 ## 业务逻辑模板
+
+### API 类型使用示例（🚨 重要）
+
+```typescript
+<script setup lang="ts">
+import academicSaasUrls from '@/api/modules/academic-saas'
+import commonUrls from '@/api/modules/common'
+
+// ✅ 正确：使用 API 类型定义
+type SceneOverviewItem = ApiTypes<typeof academicSaasUrls.questInfoOverview>['response'][number]
+type ActivityItem = ApiTypes<typeof academicSaasUrls.getAcademicSceneList>['response']['data'][number]
+
+// ✅ 正确：从 composable 导入实际类型
+import type { GetAcademicSceneListRes } from '@/utils/composables/useCommonApi'
+
+// ✅ 正确：Props 直接解构，使用正确类型
+const {
+  sceneOverviewData = []
+} = defineProps<{
+  sceneOverviewData?: SceneOverviewItem[]
+}>()
+
+// ✅ 正确：数据状态使用正确类型
+const activityList = ref<GetAcademicSceneListRes[]>([])
+
+// ✅ 正确：API 调用使用准确字段名
+async function getActivityList() {
+  const { res, error } = await useApi(academicSaasUrls.getAcademicSceneList, params)
+
+  if (res) {
+    // 使用 API 返回的准确字段名，不要假设
+    activityList.value = res.data || []  // 不是 res.list
+    pagination.total = res.totalCount || 0
+  }
+}
+
+// ❌ 错误：不要自定义接口返回值类型
+// interface CustomActivityType {
+//   id: string
+//   name: string
+// }
+</script>
+```
 
 ### 列表页面业务逻辑
 
@@ -485,3 +535,239 @@ watch(
   { immediate: true }
 )
 ```
+
+### 对话框组件业务逻辑
+
+```typescript
+<script setup lang="ts">
+import academicSaasApi from '@/api/modules/academic-saas'
+
+defineOptions({
+  name: 'SelectActivityDialog',
+})
+
+// Props 定义 - 直接解构，无需 withDefaults
+const {
+  title = '选择学术活动',
+  defaultScene = '',
+  defaultActivity = ''
+} = defineProps<{
+  /** 对话框标题 */
+  title?: string
+  /** 预选的场景类型 */
+  defaultScene?: string
+  /** 预选的活动ID */
+  defaultActivity?: string | number
+}>()
+
+// Emits 定义 - 使用小驼峰命名
+const emit = defineEmits<{
+  /** 确认选择 */
+  confirm: [data: {
+    scene: string
+    activity: string | number
+    sceneInfo?: any
+    activityInfo?: any
+  }]
+  /** 取消选择 */
+  cancel: []
+  /** 步骤变化 */
+  stepChange: [step: number]
+}>()
+
+// 响应式数据
+const visible = defineModel('visible', { default: false })
+const loading = ref(false)
+const stepActive = ref(1)
+const activeScene = ref<string>(defaultScene)
+const activeActivity = ref<string | number>(defaultActivity)
+
+// 数据状态 - ApiTypes 全局可用，无需导入
+const sceneOverviewData = ref<ApiTypes<typeof academicSaasApi.questInfoOverview>['response']>([])
+const activityListData = ref<any[]>([])
+
+// 计算属性
+const canGoNext = computed(() => {
+  if (stepActive.value === 1) {
+    return !!activeScene.value
+  }
+  if (stepActive.value === 2) {
+    return !!activeActivity.value
+  }
+  return false
+})
+
+const canConfirm = computed(() => {
+  return !!activeScene.value && !!activeActivity.value
+})
+
+// 获取场景概览数据 - useApi 无需 try-catch
+async function getSceneOverview() {
+  loading.value = true
+
+  const { res, error } = await useApi(academicSaasApi.questInfoOverview)
+
+  if (res) {
+    sceneOverviewData.value = res
+  }
+
+  if (error) {
+    ElMessage.error(error.message || '获取场景数据失败')
+    console.error('获取场景概览失败:', error)
+  }
+
+  loading.value = false
+}
+
+// 获取活动列表数据 - useApi 无需 try-catch
+async function getActivityList(sceneType: string) {
+  if (!sceneType) {
+    return
+  }
+
+  loading.value = true
+
+  const params = {
+    sceneType: Number(sceneType),
+    isCreator: 1,
+    pageSize: 50,
+    pageNo: 1,
+    searchKey: '',
+  }
+
+  const { res, error } = await useApi(academicSaasApi.getAcademicSceneList, params)
+
+  if (res) {
+    activityListData.value = res.data || []
+  }
+
+  if (error) {
+    ElMessage.error(error.message || '获取活动列表失败')
+    console.error('获取活动列表失败:', error)
+  }
+
+  loading.value = false
+}
+
+// 步骤控制
+function onPrev() {
+  if (stepActive.value > 1) {
+    stepActive.value--
+    emit('stepChange', stepActive.value)
+  }
+}
+
+function onNext() {
+  if (!canGoNext.value) {
+    const stepName = stepActive.value === 1 ? '学术场景' : '医学活动'
+    ElMessage.warning(`请先选择${stepName}`)
+    return
+  }
+
+  if (stepActive.value < 2) {
+    stepActive.value++
+    emit('stepChange', stepActive.value)
+
+    // 进入第二步时获取活动列表
+    if (stepActive.value === 2 && activeScene.value) {
+      getActivityList(activeScene.value)
+    }
+  }
+}
+
+// 确认选择
+function onConfirm() {
+  if (!canConfirm.value) {
+    ElMessage.warning('请完成所有步骤的选择')
+    return
+  }
+
+  // 获取选中的场景和活动信息
+  const sceneInfo = sceneOverviewData.value.find(item => String(item.sceneType) === String(activeScene.value))
+  const activityInfo = activityListData.value.find(item => String(item.id) === String(activeActivity.value))
+
+  const confirmData = {
+    scene: activeScene.value,
+    activity: activeActivity.value,
+    sceneInfo,
+    activityInfo
+  }
+
+  emit('confirm', confirmData)
+  visible.value = false
+  ElMessage.success('活动选择成功')
+}
+
+// 处理场景选择变化
+function handleSceneChange(scene: string) {
+  activeScene.value = scene
+
+  // 场景变化时清空活动选择
+  if (activeActivity.value) {
+    activeActivity.value = ''
+    activityListData.value = []
+  }
+}
+
+// 处理活动选择变化
+function handleActivityChange(activity: string | number) {
+  activeActivity.value = activity
+}
+
+// 初始化数据获取 - 使用 @open 事件而不是 watch visible
+async function initializeData() {
+  // 重置状态
+  stepActive.value = 1
+  activeScene.value = defaultScene
+  activeActivity.value = defaultActivity
+  activityListData.value = []
+
+  // 获取场景概览数据
+  await getSceneOverview()
+}
+
+// 监听步骤变化
+watch(stepActive, (newStep) => {
+  emit('stepChange', newStep)
+})
+</script>
+
+<template>
+  <el-dialog
+    v-model="visible"
+    :title="props.title"
+    append-to-body
+    class="customize-v3-dialog"
+    width="1040px"
+    @open="initializeData"
+  >
+    <!-- 对话框内容 -->
+  </el-dialog>
+</template>
+```
+
+## 对话框组件最佳实践
+
+### 1. 事件命名规范
+- ✅ 使用小驼峰命名：`stepChange`、`confirmData`
+- ❌ 避免短横线命名：`step-change`、`confirm-data`
+
+### 2. 数据初始化
+- ✅ 使用 `@open` 事件初始化数据，避免 `watch visible`
+- ✅ 在 `@open` 中重置状态和获取数据
+- ❌ 避免同时使用 `watch visible` 和 `@open`
+
+### 3. 错误处理
+- ✅ 每个 API 调用都要有完整的 try-catch
+- ✅ 提供用户友好的错误提示
+- ✅ 记录详细的错误日志用于调试
+
+### 4. 加载状态管理
+- ✅ 统一的 loading 状态控制
+- ✅ 在 finally 中确保 loading 状态重置
+- ✅ 禁用按钮防止重复操作
+
+### 5. 数据验证
+- ✅ 使用计算属性进行实时验证
+- ✅ 在操作前进行完整性检查
+- ✅ 提供清晰的验证提示
