@@ -1,3 +1,8 @@
+---
+type: "agent_requested"
+description: "auth pattern"
+---
+
 # 权限控制规范
 
 ## 权限控制组件使用

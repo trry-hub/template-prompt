@@ -1,3 +1,7 @@
+---
+type: "always_apply"
+---
+
 # 主开发助手
 
 ## Role

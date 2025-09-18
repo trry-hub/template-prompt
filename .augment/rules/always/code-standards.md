@@ -1,3 +1,8 @@
+---
+type: "always_apply"
+description: "代码规范和命名约定"
+---
+
 # 代码规范和命名约定
 
 ## 重要规范说明

@@ -1,3 +1,8 @@
+---
+type: "agent_requested"
+description: "Vue组件开发规则"
+---
+
 # Vue组件开发规则
 
 ## 描述

@@ -1,3 +1,8 @@
+---
+type: "agent_requested"
+description: "useApi 使用规范"
+---
+
 # useApi 使用规范
 
 ## 🚨 重要原则：严格按照 api/types 定义使用

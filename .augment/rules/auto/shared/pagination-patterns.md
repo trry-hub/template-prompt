@@ -1,3 +1,8 @@
+---
+type: "agent_requested"
+description: "usePagination 使用规范"
+---
+
 # usePagination 使用规范
 
 ## 分页管理标准模式
@@ -50,28 +55,21 @@ const searchParams = ref({
 
 // 获取数据列表
 async function getDataList() {
-  try {
-    loading.value = true
-    const params = {
-      ...getParams(), // 分页参数 { page, size }
-      ...searchParams.value, // 搜索参数
-    }
+  loading.value = true
+  const params = {
+    ...getParams(), // 分页参数 { page, size }
+    ...searchParams.value, // 搜索参数
+  }
 
-    const { res, error } = await useApi(moduleApi.list, params)
-    if (res) {
-      dataList.value = res.list
-      pagination.value.total = res.total
-    }
-    if (error) {
-      ElMessage.error(error.message || '获取数据失败')
-    }
+  const { res, error } = await useApi(moduleApi.list, params)
+  if (res) {
+    dataList.value = res.list
+    pagination.value.total = res.total
   }
-  catch (err) {
-    ElMessage.error('获取数据失败')
+  if (error) {
+    ElMessage.error(error.message || '获取数据失败')
   }
-  finally {
-    loading.value = false
-  }
+  loading.value = false
 }
 
 // 搜索处理

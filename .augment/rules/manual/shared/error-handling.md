@@ -1,3 +1,7 @@
+---
+type: "manual"
+---
+
 # 错误处理规范
 
 ## 统一错误处理模式
@@ -5,28 +9,20 @@
 ### 基础错误处理结构
 
 ```typescript
-// 标准错误处理模式
-try {
-  loading.value = true
-  const { res, error } = await useApi(api, params)
+// 标准错误处理模式，无需 try catch
+loading.value = true
+const { res, error } = await useApi(api, params)
 
-  if (res) {
-    // 处理成功响应
-    handleSuccess(res)
-  }
+if (res) {
+  // 处理成功响应
+  handleSuccess(res)
+}
 
-  if (error) {
-    // 处理业务错误
-    handleBusinessError(error)
-  }
+if (error) {
+  // 处理业务错误
+  handleBusinessError(error)
 }
-catch (err) {
-  // 处理系统错误
-  handleSystemError(err)
-}
-finally {
-  loading.value = false
-}
+loading.value = false
 ```
 
 ## 错误类型分类
