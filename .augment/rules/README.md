@@ -40,3 +40,9 @@ Augment支持三种类型的规则：
 1. **Always规则**：内容将包含在每个用户消息中，无需手动引用
 2. **Manual规则**：需要通过@mention手动引用规则文件
 3. **Auto规则**：Agent将根据描述字段自动检测并附加规则
+
+要在文件开头注明
+---
+type: "agent_requested" | "manual" | "always_apply"
+description: "描述"
+---

@@ -98,14 +98,22 @@ export interface AcademicSaasTypes {
 
 #### 3. 在代码中使用正确的类型
 ```typescript
-// ✅ 正确 - 直接使用，类型自动推断
-const { res, error } = await useApi(academicSaasApi.recommendList, params)
-
 // ✅ 正确 - 显式声明类型（如果需要）
+const searchParams = ref<ApiTypes<typeof academicSaasApi.recommendList>['request']>({
+  doctorName: '',
+})
 const doctorListData = ref<ApiTypes<typeof academicSaasApi.recommendList>['response']>()
 
+// ✅ 正确 - 直接使用，类型自动推断
+const params = {
+  ...searchParams.value,
+}
+const { res, error } = await useApi(academicSaasApi.recommendList, params)
 if (res) {
   doctorListData.value = res // 类型完全匹配
+}
+if(error) {
+  console.log(`🚀 ~ error:`, error)
 }
 ```
 
