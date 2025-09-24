@@ -1,7 +1,6 @@
 ---
 type: "agent_requested"
 description: "TypeScript开发标准"
-fileMatch: [*.ts, *.tsx]
 ---
 
 # TypeScript开发标准

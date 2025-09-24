@@ -211,24 +211,21 @@ async function handleSubmitWrong(formData: any) {
 
 ```typescript
 async function handleDelete(item: any) {
-  try {
-    await ElMessageBox.confirm('确定要删除这个项目吗？', '确认删除', {
-      type: 'warning',
-    })
+  const confirmResult = await ElMessageBox.confirm('确定要删除这个项目吗？', '确认删除', {
+    type: 'warning',
+  }).catch(() => 'cancel')
 
-    const { res, error } = await useApi(moduleApi.delete, { id: item.id })
-    if (res) {
-      ElMessage.success('删除成功')
-      getDataList() // 刷新列表
-    }
-    if (error) {
-      ElMessage.error(error.message || '删除失败')
-    }
+  if (confirmResult === 'cancel') {
+    return
   }
-  catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
+
+  const { res, error } = await useApi(moduleApi.delete, { id: item.id })
+  if (res) {
+    ElMessage.success('删除成功')
+    getDataList() // 刷新列表
+  }
+  if (error) {
+    ElMessage.error(error.message || '删除失败')
   }
 }
 ```
@@ -242,28 +239,25 @@ async function handleBatchDelete() {
     return
   }
 
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除这 ${selectedItems.value.length} 个项目吗？`,
-      '批量删除',
-      { type: 'warning' }
-    )
+  const confirmResult = await ElMessageBox.confirm(
+    `确定要删除这 ${selectedItems.value.length} 个项目吗？`,
+    '批量删除',
+    { type: 'warning' }
+  ).catch(() => 'cancel')
 
-    const ids = selectedItems.value.map(item => item.id)
-    const { res, error } = await useApi(moduleApi.batchDelete, { ids })
-    if (res) {
-      ElMessage.success('批量删除成功')
-      selectedItems.value = []
-      getDataList()
-    }
-    if (error) {
-      ElMessage.error(error.message || '批量删除失败')
-    }
+  if (confirmResult === 'cancel') {
+    return
   }
-  catch (err) {
-    if (err !== 'cancel') {
-      ElMessage.error('批量删除失败')
-    }
+
+  const ids = selectedItems.value.map(item => item.id)
+  const { res, error } = await useApi(moduleApi.batchDelete, { ids })
+  if (res) {
+    ElMessage.success('批量删除成功')
+    selectedItems.value = []
+    getDataList()
+  }
+  if (error) {
+    ElMessage.error(error.message || '批量删除失败')
   }
 }
 ```
@@ -404,13 +398,19 @@ if (error) {
 ### 3. 合理使用 loading 状态
 ```typescript
 // ✅ 正确
-try {
+async function fetchData() {
   loading.value = true
+
   const { res, error } = await useApi(api, params)
-  // 处理响应...
-}
-finally {
-  loading.value = false // 确保 loading 被重置
+  if (res) {
+    // 处理成功响应
+    data.value = res.data
+  }
+  if (error) {
+    ElMessage.error(error.message || '获取数据失败')
+  }
+
+  loading.value = false
 }
 ```
 
